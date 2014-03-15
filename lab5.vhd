@@ -5,7 +5,7 @@ use ieee.numeric_std.all;
 entity lab5 is
   port(CLOCK_50            : in  std_logic;
        KEY                 : in  std_logic_vector(3 downto 0);
-       SW                  : in  std_logic_vector(17 downto 0);
+       SW                  : in  std_logic_vector(3 downto 0);
        VGA_R, VGA_G, VGA_B : out std_logic_vector(9 downto 0);  -- The outs go to VGA controller
        VGA_HS              : out std_logic;
        VGA_VS              : out std_logic;
@@ -31,7 +31,18 @@ architecture RTL of lab5 is
   signal x      : std_logic_vector(7 downto 0);
   signal y      : std_logic_vector(6 downto 0);
   signal colour : std_logic_vector(2 downto 0);
-  signal plot   : std_logic;  
+  signal plot   : std_logic; 
+  signal slow_clock: std_logic_vector (20 downto 0); 
+  signal variable_clock : std_logic;
+  signal clock_selector : std_logic;
+  signal XpositionB1  : integer range 0 to 159;
+  signal YpositionB1  : integer range 0 to 119;
+  signal XpositionB2  : integer range 0 to 159;
+  signal YpositionB2  : integer range 0 to 119;
+  signal XpositionR1  : integer range 0 to 159;
+  signal YpositionR1  : integer range 0 to 119;
+  signal XpositionR2  : integer range 0 to 159;
+  signal YpositionR2  : integer range 0 to 119;  
   
 begin
 
@@ -51,26 +62,46 @@ begin
              VGA_BLANK => VGA_BLANK,
              VGA_SYNC  => VGA_SYNC,
              VGA_CLK   => VGA_CLK);
+				 
+process(CLOCK_50)
+  variable slow_clock_var: unsigned (20 downto 0);
+begin
+	if (CLOCK_50'event and CLOCK_50 = '1') then
+	slow_clock_var:= unsigned (slow_clock);
+   slow_clock_var:=  slow_clock_var + 1;
+   end if;
+	slow_clock <= std_logic_vector (slow_clock_var); 
+end process; 				 
 		
-process(CLOCK_50,KEY(3))
-  variable int_value : std_logic_vector(1 downto 0);
+process(clock_selector)
+begin		
+	if(clock_selector = '0') then
+	variable_clock <= CLOCK_50;
+	else
+	variable_clock <= slow_clock(slow_clock'left);
+	end if;
+end process;
+
+process(variable_clock,KEY(3))
+  variable int_value : std_logic_vector(4 downto 0);
   variable countX : integer range 0 to 159;
   variable countY : integer range 0 to 119;
   variable colourVar : std_logic_vector(2 downto 0);
-  variable Xinitial : std_logic_vector (7 downto 0) := "01010000";
-  variable Yinitial : std_logic_vector (6 downto 0) := "0111100";  
+  variable countYB1 : integer range 0 to 119 := 30;
+  variable countOldYB1 : integer range 0 to 119 := 30;
+  variable countYB2 : integer range 0 to 119 := 41; 
+  variable countYR1 : integer range 0 to 119 := 30; 
+  variable countYR2 : integer range 0 to 119 := 41;   
 begin		
-	if(KEY(3) = '1') then -- Reset
-		int_value := "00";
-   elsif(CLOCK_50'event and CLOCK_50 = '1') then -- each time a counter overflows, 1 bit is plotted on screen
-	if(KEY(0) = '1') then -- Each time Key(0) is pressed, a line is plotted
-		int_value := "01";
+	if(KEY(3) = '0') then -- Reset
+		int_value := "00000";
+   elsif(variable_clock'event and variable_clock = '1') then -- each time a counter overflows, 1 bit is plotted on screen
+	if(KEY(0) = '0') then -- Each time Key(0) is pressed, a line is plotted
+		int_value := "11111";
 	end if;
-	
 	case int_value is
-		when "00" =>
-		Xinitial := "00000000";
-		Yinitial := "0000000";
+		when "00000" =>
+		clock_selector <= '0';
 		if(countX > 159) then
 			countY := countY + 1;
 			countX := 0;
@@ -86,20 +117,28 @@ begin
 		elsif(countY = 119) then
 		colourVar := "111";
 		elsif(countX = 3) then
+		XpositionB1 <= countX;
 		if(countY >= 20 and countY <= 30) then
 		colourVar := "001";
+		YpositionB1 <= countY;
 		end if;
 		elsif(countX = 25) then
+		XpositionB2 <= countX;
 		if(countY >= 31 and countY <= 41) then
 		colourVar := "001";
+		YpositionB2 <= countY;
 		end if;
 		elsif(countX = 125) then
+		XpositionR1 <= countX;
 		if(countY >= 20 and countY <= 30) then
 		colourVar := "100";
+		YpositionR1 <= countY;
 		end if;
 		elsif(countX = 155) then
+		XpositionR2 <= countX;
 		if(countY >= 31 and countY <= 41) then
 		colourVar := "100";
+		YpositionR2 <= countY;
 		end if;
 		else
 		colourVar := "000";
@@ -107,14 +146,42 @@ begin
 		plot <= '1';
 		x <= std_logic_vector(to_unsigned(countX,8));
 		y <= std_logic_vector(to_unsigned(countY,7));
+		countYB1 := 30;
+		
+		when "00001" =>
+		if(SW(0) = '1') then
+			countOldYB1 := countYB1 + 10;
+			if(countYB1 > 1) then
+			countYB1 := countYB1 - 1;
+			end if;		
+		elsif(SW(0) = '0') then	
+			countOldYB1 := countYB1 - 10;		
+			if(countYB1 < 118) then
+			countYB1 := countYB1 + 1;
+			end if;
+		end if;
+			colourVar := "001";
+			plot <= '1';
+			x <= std_logic_vector(to_unsigned(XpositionB1,8));
+			y <= std_logic_vector(to_unsigned(countYB1,7));
+			int_value := "00010";
+			
+		when "00010" =>
+		colourVar := "000";
+		x <= std_logic_vector(to_unsigned(XpositionB1,8));
+		y <= std_logic_vector(to_unsigned(countOldYB1,7));
+		int_value := "00001";
 		
 		when others =>
 		plot <= '0';
-		end case;
+		clock_selector <= '1';
+		int_value := "00001";
 		
+		end case;
 		colour <= colourVar;
 		end if;
-		end process;
+end process;
+		
 end RTL;
 
 
