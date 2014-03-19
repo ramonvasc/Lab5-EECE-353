@@ -34,7 +34,7 @@ architecture RTL of lab5 is
   signal plot   : std_logic; 
   signal slow_clock: std_logic_vector (18 downto 0); 
   signal variable_clock : std_logic;
-  signal clock_selector : std_logic;
+  signal clock_selector : std_logic_vector (1 downto 0);
   signal XpositionB1  : integer range 0 to 159;
   signal YpositionB1  : integer range 0 to 119;
   signal XpositionB2  : integer range 0 to 159;
@@ -75,15 +75,20 @@ end process;
 		
 process(clock_selector)
 begin		
-	if(clock_selector = '0') then
+	if(clock_selector = "00") then
 	variable_clock <= CLOCK_50;
-	else
+	elsif(clock_selector = "01") then
 	variable_clock <= slow_clock(slow_clock'left);
+	elsif(clock_selector = "10") then
+	variable_clock <= slow_clock(slow_clock'left - 1);
+	else
+	variable_clock <= slow_clock(slow_clock'left - 2);
 	end if;
 end process;
 
 process(variable_clock,KEY(3))
   variable int_value : std_logic_vector(4 downto 0);
+  variable gameSpeed : integer range 0 to 600 := 0;
   variable countX : integer range 0 to 159;
   variable countY : integer range 0 to 119;
   variable colourVar : std_logic_vector(2 downto 0);
@@ -104,7 +109,7 @@ begin
 	end if;
 	case int_value is
 		when "00000" => --restart the game
-		clock_selector <= '0';
+		clock_selector <= "00";
 		if(countX > 159) then
 			countY := countY + 1;
 			countX := 0;
@@ -149,16 +154,25 @@ begin
 		plot <= '1';
 		x <= std_logic_vector(to_unsigned(countX,8));
 		y <= std_logic_vector(to_unsigned(countY,7));
-		countYB1 := 30;
 		
 		when "00001" => --plot player blue 1
 		if(SW(0) = '1') then
+			if((countYB1 + 10) <= 118) then
 			countOldYB1 := countYB1 + 10;
+			else
+			countYB1 := countYB1 - 1;
+			countOldYB1 := 1;
+			end if;
 			if(countYB1 > 1) then
 			countYB1 := countYB1 - 1;
 			end if;		
 		elsif(SW(0) = '0') then	
-			countOldYB1 := countYB1 - 10;		
+			if((countYB1 - 10) >=1) then
+			countOldYB1 := countYB1 - 10;
+			else
+			countYB1 := countYB1 + 1;
+			countOldYB1 := 118;
+			end if;
 			if(countYB1 < 118) then
 			countYB1 := countYB1 + 1;
 			end if;
@@ -177,12 +191,22 @@ begin
 		
 		when "00011" => --plot player blue 2
 		if(SW(1) = '1') then
+			if((countYB2 + 10) <= 118) then
 			countOldYB2 := countYB2 + 10;
+			else
+			countYB2 := countYB2 - 1;
+			countOldYB2 := 1;
+			end if;
 			if(countYB2 > 1) then
 			countYB2 := countYB2 - 1;
 			end if;		
 		elsif(SW(1) = '0') then	
-			countOldYB2 := countYB2 - 10;		
+			if((countYB2 - 10) >=1) then
+			countOldYB2 := countYB2 - 10;
+			else
+			countYB2 := countYB2 + 1;
+			countOldYB2 := 118;
+			end if;		
 			if(countYB2 < 118) then
 			countYB2 := countYB2 + 1;
 			end if;
@@ -201,12 +225,22 @@ begin
 		
 		when "00101" => --plot player red 1
 		if(SW(2) = '1') then
+			if((countYR1 + 10) <= 118) then
 			countOldYR1 := countYR1 + 10;
+			else
+			countYR1 := countYR1 - 1;
+			countOldYR1 := 1;
+			end if;
 			if(countYR1 > 1) then
 			countYR1 := countYR1 - 1;
 			end if;		
 		elsif(SW(2) = '0') then	
-			countOldYR1 := countYR1 - 10;		
+			if((countYR1 - 10) >=1) then
+			countOldYR1 := countYR1 - 10;
+			else
+			countYR1 := countYR1 + 1;
+			countOldYR1 := 118;
+			end if;		
 			if(countYR1 < 118) then
 			countYR1 := countYR1 + 1;
 			end if;
@@ -225,12 +259,22 @@ begin
 		
 		when "00111" => --plot player red 2
 		if(SW(3) = '1') then
+			if((countYR2 + 10) <= 118) then
 			countOldYR2 := countYR2 + 10;
+			else
+			countYR2 := countYR2 - 1;
+			countOldYR2 := 1;
+			end if;
 			if(countYR2 > 1) then
 			countYR2 := countYR2 - 1;
 			end if;		
 		elsif(SW(3) = '0') then	
-			countOldYR2 := countYR2 - 10;		
+			if((countYR2 - 10) >=1) then
+			countOldYR2 := countYR2 - 10;
+			else
+			countYR2 := countYR2 + 1;
+			countOldYR2 := 118;
+			end if;
 			if(countYR2 < 118) then
 			countYR2 := countYR2 + 1;
 			end if;
@@ -245,11 +289,24 @@ begin
 		colourVar := "000";
 		x <= std_logic_vector(to_unsigned(XpositionR2,8));
 		y <= std_logic_vector(to_unsigned(countOldYR2,7));
+		int_value := "11110";
+		
+		when "11110" => 
+		gameSpeed := gameSpeed + 1;
+		if(gameSpeed = 200) then
+		clock_selector <= "10";
+		end if;
+		if(gameSpeed = 400) then
+		clock_selector <= "11";
+		end if;
+		if(gameSpeed = 1) then 
+		clock_selector <= "01";
+		end if;
 		int_value := "00001";
 		
 		when others =>
 		plot <= '0';
-		clock_selector <= '1';
+		clock_selector <= "01";
 		int_value := "00001";
 		
 		end case;
