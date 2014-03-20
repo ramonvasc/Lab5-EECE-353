@@ -42,7 +42,20 @@ architecture RTL of lab5 is
   signal XpositionR1  : integer range 0 to 159;
   signal YpositionR1  : integer range 0 to 119;
   signal XpositionR2  : integer range 0 to 159;
-  signal YpositionR2  : integer range 0 to 119;  
+  signal YpositionR2  : integer range 0 to 119; 
+  signal Xposition : std_logic_vector (7 downto 0);
+  signal Yposition : std_logic_vector (6 downto 0);  
+  signal Xlength : signed (8 downto 0);
+  signal Ylength : signed (7 downto 0);  
+  signal Xsignal : signed (3 downto 0);
+  signal Ysignal : signed (3 downto 0);  
+ 
+  procedure plotPixel (xPixel,yPixel : integer) is --VHDL function to plot my pixels
+  begin
+  			plot <= '1';
+			x <= std_logic_vector(to_unsigned(xPixel,8));
+			y <= std_logic_vector(to_unsigned(yPixel,7));
+  end plotPixel; 
   
 begin
 
@@ -99,7 +112,16 @@ process(variable_clock,KEY(3))
   variable countYR1 : integer range 0 to 119 := 30;
   variable countOldYR1 : integer range 0 to 119 := 30;
   variable countYR2 : integer range 0 to 119 := 41; 
-  variable countOldYR2 : integer range 0 to 119 := 41;  
+  variable countOldYR2 : integer range 0 to 119 := 41;
+  variable XinitialVar: unsigned (7 downto 0):= "01010000";
+  variable YinitialVar: unsigned (6 downto 0):= "0111100";
+  variable Xinitial : std_logic_vector (7 downto 0);
+  variable Yinitial : std_logic_vector (6 downto 0);   
+  variable countOldPuckXinitial : integer range 0 to 159;
+  variable countOldPuckYinitial : integer range 0 to 119;
+  variable Initial_error : signed (8 downto 0);
+  variable Actual_error : signed (17 downto 0);
+  
 begin		
 	if(KEY(3) = '0') then -- Reset
 		int_value := "00000";
@@ -151,9 +173,19 @@ begin
 		else
 		colourVar := "000";
 		end if;
-		plot <= '1';
-		x <= std_logic_vector(to_unsigned(countX,8));
-		y <= std_logic_vector(to_unsigned(countY,7));
+		XinitialVar := "01010000";
+		YinitialVar := "0111100";
+		--countOldPuckXinitial := 80;
+		--countOldPuckYinitial := 60;
+		--Xsignal <= to_signed(0,4);
+		--Ysignal <= to_signed(0,4);
+		--initial_error := to_signed(0,9);
+		--Actual_error := to_signed(0,18);
+		countYB1 := 30; 
+		countYB2 := 41;
+		countYR1 := 30;
+		countYR2 := 41;
+		plotPixel(countX,countY);
 		
 		when "00001" => --plot player blue 1
 		if(SW(0) = '1') then
@@ -178,15 +210,12 @@ begin
 			end if;
 		end if;
 			colourVar := "001";
-			plot <= '1';
-			x <= std_logic_vector(to_unsigned(XpositionB1,8));
-			y <= std_logic_vector(to_unsigned(countYB1,7));
+			plotPixel(XpositionB1,countYB1);
 			int_value := "00010";
 			
 		when "00010" => --erase player blue 1
 		colourVar := "000";
-		x <= std_logic_vector(to_unsigned(XpositionB1,8));
-		y <= std_logic_vector(to_unsigned(countOldYB1,7));
+		plotPixel(XpositionB1,countOldYB1);
 		int_value := "00011";
 		
 		when "00011" => --plot player blue 2
@@ -212,15 +241,12 @@ begin
 			end if;
 		end if;
 			colourVar := "001";
-			plot <= '1';
-			x <= std_logic_vector(to_unsigned(XpositionB2,8));
-			y <= std_logic_vector(to_unsigned(countYB2,7));
+			plotPixel(XpositionB2,countYB2);
 			int_value := "00100";
 			
 		when "00100" => --erase player blue 2
 		colourVar := "000";
-		x <= std_logic_vector(to_unsigned(XpositionB2,8));
-		y <= std_logic_vector(to_unsigned(countOldYB2,7));
+		plotPixel(XpositionB2,countOldYB2);
 		int_value := "00101";
 		
 		when "00101" => --plot player red 1
@@ -246,15 +272,12 @@ begin
 			end if;
 		end if;
 			colourVar := "100";
-			plot <= '1';
-			x <= std_logic_vector(to_unsigned(XpositionR1,8));
-			y <= std_logic_vector(to_unsigned(countYR1,7));
+			plotPixel(XpositionR1,countYR1);
 			int_value := "00110";
 			
 		when "00110" => --erase player red 1
 		colourVar := "000";
-		x <= std_logic_vector(to_unsigned(XpositionR1,8));
-		y <= std_logic_vector(to_unsigned(countOldYR1,7));
+		plotPixel(XpositionR1,countOldYR1);
 		int_value := "00111";
 		
 		when "00111" => --plot player red 2
@@ -280,18 +303,88 @@ begin
 			end if;
 		end if;
 			colourVar := "100";
-			plot <= '1';
-			x <= std_logic_vector(to_unsigned(XpositionR2,8));
-			y <= std_logic_vector(to_unsigned(countYR2,7));
+			plotPixel(XpositionR2,countYR2);
 			int_value := "01000";
 			
 		when "01000" => --erase player red 2
 		colourVar := "000";
-		x <= std_logic_vector(to_unsigned(XpositionR2,8));
-		y <= std_logic_vector(to_unsigned(countOldYR2,7));
+		plotPixel(XpositionR2,countOldYR2);
+		int_value := "01001";
+		
+		when "01001" => --puck movement plot
+		if ((YinitialVar > 1) AND (Ysignal = -1)) then
+		countOldPuckXinitial := to_integer(XinitialVar);
+		countOldPuckYinitial := to_integer(YinitialVar);
+		XinitialVar:= XinitialVar +1;
+		YinitialVar:= YinitialVar -1;
+		Ysignal <= to_signed(1,4);
+		else
+		Ysignal <= to_signed(-1,4);
+		end if;
+		
+		if ((YinitialVar < 1) AND (Ysignal = -1)) then
+		countOldPuckXinitial := to_integer(XinitialVar);
+		countOldPuckYinitial := to_integer(YinitialVar);
+		XinitialVar:= XinitialVar +1;
+		YinitialVar:= YinitialVar +1;
+		Ysignal <= to_signed(1,4);
+		else
+		Ysignal <= to_signed(1,4);
+		end if;
+		
+		If ((XinitialVar > 1) AND (Xsignal = 1)) then
+		countOldPuckXinitial := to_integer(XinitialVar);
+		countOldPuckYinitial := to_integer(YinitialVar);		
+		XinitialVar:= XinitialVar +1;
+		YinitialVar:= YinitialVar -1;
+		Ysignal <= to_signed(1,4);
+		else
+		Ysignal <= to_signed(-1,4);
+		end if;
+		
+		If ((XinitialVar < 1) AND (Xsignal = 1)) then
+		countOldPuckXinitial := to_integer(XinitialVar);
+		countOldPuckYinitial := to_integer(YinitialVar);		
+		XinitialVar:= XinitialVar +1;
+		YinitialVar:= YinitialVar -1;
+		Ysignal <= to_signed(1,4);
+		else
+		Ysignal <= to_signed(-1,4);
+		end if;
+		
+		Xinitial := std_logic_vector (XinitialVar);
+		Yinitial := std_logic_vector (YinitialVar);
+				
+		Xlength <= "000001111";
+		Ylength <= "00001111";
+		
+		if ((Xposition /= Xinitial) and (Yposition /= Yinitial)) then
+		Actual_error := 2*Initial_error;
+		else
+		int_value := "11110";
+		end if;
+		
+		if(Actual_error > 0-Ylength) then
+		Initial_error := Initial_error - Ylength;
+		Xposition <= std_logic_vector(signed(Xinitial) + Xsignal); -- was Xinitial
+		end if;
+
+		if(Actual_error < Xlength) then
+		Initial_error := Initial_error + Xlength;
+		Yposition <= std_logic_vector(signed(Yinitial) + Ysignal); -- was Yinitial
+		end if;
+		colourVar := "111";
+		plot <= '1';
+		x <= Xinitial;
+		y <= Yinitial;
+		int_value := "01010";
+		
+		when "01010" => --puck movement erase
+		colourVar := "000";
+		plotPixel(countOldPuckXinitial, countOldPuckYinitial);
 		int_value := "11110";
 		
-		when "11110" => 
+		when "11110" => --game speed based on a counter
 		gameSpeed := gameSpeed + 1;
 		if(gameSpeed = 200) then
 		clock_selector <= "10";
